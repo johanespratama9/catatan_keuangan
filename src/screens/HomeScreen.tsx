@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BalanceCard } from '../components/BalanceCard';
@@ -52,9 +53,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     >
       {/* App Header */}
       <View style={styles.topHeader}>
-        <View>
-          <Text style={styles.greetingTitle}>Catatan Keuangan</Text>
-          <Text style={styles.greetingSubtitle}>Kelola finansial Anda dengan rapi</Text>
+        <View style={styles.brandRow}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.headerLogo}
+            resizeMode="cover"
+          />
+          <View>
+            <Text style={styles.greetingTitle}>Catatan Keuangan</Text>
+            <Text style={styles.greetingSubtitle}>Kelola finansial Anda dengan rapi</Text>
+          </View>
         </View>
         <View style={styles.headerBtnGroup}>
           <TouchableOpacity
@@ -208,6 +216,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
   },
   greetingTitle: {
     fontSize: 22,
