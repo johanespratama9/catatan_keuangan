@@ -51,6 +51,7 @@ function MainApp() {
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [refreshing, setRefreshing] = useState(false);
+  const [transactionPeriodFilter, setTransactionPeriodFilter] = useState<'all' | 'today' | 'month'>('all');
 
   // Core Data States
   const [summary, setSummary] = useState<FinancialSummary>({
@@ -206,12 +207,20 @@ function MainApp() {
           {activeTab === 'home' && (
             <HomeScreen
               summary={summary}
+              allTransactions={transactions}
               recentTransactions={recentTransactions}
               refreshing={refreshing}
               onRefresh={handleRefresh}
               onOpenAddModal={openAddTransaction}
               onSelectTransaction={openEditTransaction}
-              onNavigateToTransactions={() => setActiveTab('transactions')}
+              onNavigateToTransactions={() => {
+                setTransactionPeriodFilter('all');
+                setActiveTab('transactions');
+              }}
+              onNavigateToTodayTransactions={() => {
+                setTransactionPeriodFilter('today');
+                setActiveTab('transactions');
+              }}
               onNavigateToAnalytics={() => setActiveTab('analytics')}
               onNavigateToCategories={() => setActiveTab('categories')}
               onOpenExcelModal={() => setIsExcelModalVisible(true)}
@@ -221,6 +230,8 @@ function MainApp() {
           {activeTab === 'transactions' && (
             <TransactionsScreen
               transactions={transactions}
+              initialPeriod={transactionPeriodFilter}
+              onPeriodChange={setTransactionPeriodFilter}
               refreshing={refreshing}
               onRefresh={handleRefresh}
               onSelectTransaction={openEditTransaction}

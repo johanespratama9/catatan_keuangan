@@ -17,15 +17,18 @@ import {
   TransactionType,
 } from '../types';
 import { colors } from '../utils/colors';
+import { formatRupiah, toISODateString } from '../utils/formatters';
 
 interface HomeScreenProps {
   summary: FinancialSummary;
+  allTransactions?: TransactionWithCategory[];
   recentTransactions: TransactionWithCategory[];
   refreshing: boolean;
   onRefresh: () => void;
   onOpenAddModal: (type: TransactionType) => void;
   onSelectTransaction: (item: TransactionWithCategory) => void;
   onNavigateToTransactions: () => void;
+  onNavigateToTodayTransactions?: () => void;
   onNavigateToAnalytics: () => void;
   onNavigateToCategories: () => void;
   onOpenExcelModal: () => void;
@@ -33,16 +36,35 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   summary,
+  allTransactions,
   recentTransactions,
   refreshing,
   onRefresh,
   onOpenAddModal,
   onSelectTransaction,
   onNavigateToTransactions,
+  onNavigateToTodayTransactions,
   onNavigateToAnalytics,
   onNavigateToCategories,
   onOpenExcelModal,
 }) => {
+  const todayStr = toISODateString(new Date());
+  const todayDateObj = new Date();
+  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+    'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+  ];
+  const todayFormatted = `${dayNames[todayDateObj.getDay()]}, ${todayDateObj.getDate()} ${monthNames[todayDateObj.getMonth()]}`;
+
+  const txSource = allTransactions && allTransactions.length > 0 ? allTransactions : recentTransactions;
+  const todayTransactions = txSource.filter((t) => t.date === todayStr);
+  const todayExpenses = todayTransactions.filter((t) => t.type === 'expense');
+  const todayExpenseTotal = todayExpenses.reduce((sum, t) => sum + t.amount, 0);
+  const todayIncomeTotal = todayTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const todayExpenseCount = todayExpenses.length;
   return (
     <ScrollView
       style={styles.container}
@@ -88,6 +110,54 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         periodLabel="Keseluruhan"
         onPressPeriod={onNavigateToAnalytics}
       />
+
+      {/* Pengeluaran Hari Ini Card */}
+      <TouchableOpacity
+        style={styles.todayCard}
+        onPress={onNavigateToTodayTransactions || onNavigateToTransactions}
+        activeOpacity={0.82}
+      >
+        <View style={styles.todayCardContent}>
+          <View style={styles.todayIconWrap}>
+            <Ionicons name="calendar" size={22} color="#EF4444" />
+          </View>
+          <View style={styles.todayInfo}>
+            <View style={styles.todayTopRow}>
+              <Text style={styles.todayCardTitle}>Pengeluaran Hari Ini</Text>
+              <View style={styles.todayDateTag}>
+                <Text style={styles.todayDateTagText}>{todayFormatted}</Text>
+              </View>
+            </View>
+
+            <Text
+              style={[
+                styles.todayExpenseAmount,
+                todayExpenseTotal === 0 && styles.todayExpenseZero,
+              ]}
+            >
+              {formatRupiah(todayExpenseTotal)}
+            </Text>
+
+            <View style={styles.todayBottomRow}>
+              <Text style={styles.todayTransCount}>
+                {todayExpenseCount > 0
+                  ? `${todayExpenseCount} transaksi dicatat`
+                  : 'Belum ada pengeluaran'}
+              </Text>
+              {todayIncomeTotal > 0 && (
+                <Text style={styles.todayIncomeSub}>
+                  • Pemasukan: +{formatRupiah(todayIncomeTotal)}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.todayChevronWrap}>
+          <Text style={styles.todayDetailText}>Rincian</Text>
+          <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+        </View>
+      </TouchableOpacity>
 
       {/* Quick Action Buttons */}
       <View style={styles.quickActionsContainer}>
@@ -255,6 +325,106 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  todayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 2,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  todayCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  todayIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  todayInfo: {
+    flex: 1,
+  },
+  todayTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  todayCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  todayDateTag: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  todayDateTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  todayExpenseAmount: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#EF4444',
+    letterSpacing: -0.5,
+    marginVertical: 1,
+  },
+  todayExpenseZero: {
+    color: '#64748B',
+  },
+  todayBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  todayTransCount: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  todayIncomeSub: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  todayChevronWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 2,
+    marginLeft: 8,
+  },
+  todayDetailText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
   },
   excelBannerCard: {
     flexDirection: 'row',

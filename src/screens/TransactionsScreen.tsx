@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   TransactionWithCategory,
   TransactionType,
 } from '../types';
-import { formatRupiah } from '../utils/formatters';
+import { formatRupiah, toISODateString } from '../utils/formatters';
 
 interface TransactionsScreenProps {
   transactions: TransactionWithCategory[];
@@ -23,6 +23,8 @@ interface TransactionsScreenProps {
   onSelectTransaction: (item: TransactionWithCategory) => void;
   onOpenAddModal: (type: TransactionType) => void;
   onOpenExcelModal?: () => void;
+  initialPeriod?: 'all' | 'today' | 'month';
+  onPeriodChange?: (period: 'all' | 'today' | 'month') => void;
 }
 
 export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
@@ -32,12 +34,36 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   onSelectTransaction,
   onOpenAddModal,
   onOpenExcelModal,
+  initialPeriod = 'all',
+  onPeriodChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | TransactionType>('all');
+  const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | 'month'>(initialPeriod);
+
+  useEffect(() => {
+    if (initialPeriod) {
+      setPeriodFilter(initialPeriod);
+    }
+  }, [initialPeriod]);
+
+  const handlePeriodChange = (period: 'all' | 'today' | 'month') => {
+    setPeriodFilter(period);
+    onPeriodChange?.(period);
+  };
+
+  const todayStr = toISODateString(new Date());
+  const currentMonthStr = todayStr.substring(0, 7);
 
   // Filter transactions in-memory
   const filteredTransactions = transactions.filter((t) => {
+    // Period filter
+    if (periodFilter === 'today' && t.date !== todayStr) {
+      return false;
+    }
+    if (periodFilter === 'month' && !t.date.startsWith(currentMonthStr)) {
+      return false;
+    }
     // Type match
     if (filterType !== 'all' && t.type !== filterType) {
       return false;
@@ -105,6 +131,70 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
         )}
       </View>
 
+      {/* Period Filter Chips */}
+      <View style={styles.periodChipRow}>
+        <TouchableOpacity
+          style={[styles.periodChip, periodFilter === 'all' && styles.periodChipActive]}
+          onPress={() => handlePeriodChange('all')}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.periodChipText,
+              periodFilter === 'all' && styles.periodChipTextActive,
+            ]}
+          >
+            Semua Waktu
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.periodChip,
+            periodFilter === 'today' && styles.periodChipTodayActive,
+          ]}
+          onPress={() => handlePeriodChange('today')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="calendar"
+            size={13}
+            color={periodFilter === 'today' ? '#FFFFFF' : '#EF4444'}
+          />
+          <Text
+            style={[
+              styles.periodChipText,
+              periodFilter === 'today' && styles.periodChipTextActive,
+            ]}
+          >
+            Hari Ini
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.periodChip,
+            periodFilter === 'month' && styles.periodChipMonthActive,
+          ]}
+          onPress={() => handlePeriodChange('month')}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={13}
+            color={periodFilter === 'month' ? '#FFFFFF' : '#2563EB'}
+          />
+          <Text
+            style={[
+              styles.periodChipText,
+              periodFilter === 'month' && styles.periodChipTextActive,
+            ]}
+          >
+            Bulan Ini
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Filter Chips */}
       <View style={styles.filterChipRow}>
         <TouchableOpacity
@@ -120,7 +210,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
               filterType === 'all' && styles.chipTextActive,
             ]}
           >
-            Semua ({transactions.length})
+            Semua ({filteredTransactions.length})
           </Text>
         </TouchableOpacity>
 
@@ -162,7 +252,11 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
       {/* Summary Ribbon */}
       <View style={styles.summaryRibbon}>
         <Text style={styles.summaryCount}>
-          {filteredTransactions.length} Transaksi Ditemukan
+          {periodFilter === 'today'
+            ? `Hari Ini (${filteredTransactions.length})`
+            : periodFilter === 'month'
+            ? `Bulan Ini (${filteredTransactions.length})`
+            : `${filteredTransactions.length} Transaksi`}
         </Text>
         <View style={styles.summaryAmounts}>
           {filterType !== 'expense' && (
@@ -282,6 +376,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F172A',
     padding: 0,
+  },
+  periodChipRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 8,
+  },
+  periodChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  periodChipActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  periodChipTodayActive: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  periodChipMonthActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  periodChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  periodChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   filterChipRow: {
     flexDirection: 'row',
