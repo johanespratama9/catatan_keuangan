@@ -4,38 +4,36 @@
     "slug": "catatankeuangan",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/wallet.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/wallet.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
       "splash": {
-        "image": "./assets/splash.png",
+        "image": "./assets/wallet.png",
         "resizeMode": "contain",
-        "backgroundColor": "#0F172A"
+        "backgroundColor": "#ffffff"
       }
     },
     "android": {
       "package": "com.catatankeuangan",
       "adaptiveIcon": {
-        "backgroundColor": "#0F172A",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/wallet.png"
       },
       "splash": {
-        "image": "./assets/splash.png",
+        "image": "./assets/wallet.png",
         "resizeMode": "contain",
-        "backgroundColor": "#0F172A"
+        "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/wallet.png"
     },
     "plugins": [
       "expo-sqlite",

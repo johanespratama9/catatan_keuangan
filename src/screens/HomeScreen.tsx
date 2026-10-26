@@ -54,11 +54,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* App Header */}
       <View style={styles.topHeader}>
         <View style={styles.brandRow}>
-          <Image
+          {/* <Image
             source={require('../../assets/icon.png')}
             style={styles.headerLogo}
             resizeMode="cover"
-          />
+          /> */}
           <View>
             <Text style={styles.greetingTitle}>Catatan Keuangan</Text>
             <Text style={styles.greetingSubtitle}>Kelola finansial Anda dengan rapi</Text>

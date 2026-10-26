@@ -42,7 +42,6 @@ import { CategoriesScreen } from './src/screens/CategoriesScreen';
 import { TransactionModal } from './src/components/TransactionModal';
 import { CategoryModal } from './src/components/CategoryModal';
 import { ExcelModal } from './src/components/ExcelModal';
-import { SplashScreen } from './src/components/SplashScreen';
 import { colors } from './src/utils/colors';
 
 type TabType = 'home' | 'transactions' | 'analytics' | 'categories';
@@ -188,7 +187,12 @@ function MainApp() {
   };
 
   if (!isReady) {
-    return <SplashScreen statusText="Menyiapkan Catatan Keuangan..." />;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Menyiapkan Catatan Keuangan...</Text>
+      </View>
+    );
   }
 
   const bottomNavPadding = Math.max(insets.bottom, 16) + (Platform.OS === 'ios' ? 6 : 10);
