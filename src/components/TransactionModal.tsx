@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -49,6 +50,41 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [note, setNote] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [isNoteFocused, setIsNoteFocused] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+      setIsNoteFocused(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const handleNoteFocus = () => {
+    setIsNoteFocused(true);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 280);
+  };
+
+  const handleNoteBlur = () => {
+    setIsNoteFocused(false);
+  };
 
   useEffect(() => {
     if (visible) {
@@ -188,9 +224,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </View>
 
         <ScrollView
+          ref={scrollViewRef}
           style={styles.body}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingBottom: isNoteFocused
+                ? Math.max(keyboardHeight + 20, 200)
+                : keyboardHeight > 0
+                ? 100
+                : 36,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {/* Expense / Income Toggle */}
           <View style={styles.typeSelector}>
@@ -369,19 +418,34 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Note Input */}
           <View style={styles.inputSection}>
-            <Text style={styles.sectionLabel}>Catatan (Opsional)</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.sectionLabel}>Catatan (Opsional)</Text>
+              {isNoteFocused && (
+                <TouchableOpacity
+                  onPress={() => Keyboard.dismiss()}
+                  style={styles.dismissBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="checkmark-done" size={15} color={colors.primary} />
+                  <Text style={styles.dismissText}>Selesai Mengetik</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <TextInput
-              style={styles.noteInput}
+              style={[
+                styles.noteInput,
+                isNoteFocused && styles.noteInputFocused,
+              ]}
               placeholder="Contoh: Makan siang dengan rekan kerja"
               placeholderTextColor="#94A3B8"
               value={note}
               onChangeText={setNote}
+              onFocus={handleNoteFocus}
+              onBlur={handleNoteBlur}
               multiline
               numberOfLines={3}
             />
           </View>
-
-          <View style={{ height: 40 }} />
         </ScrollView>
 
         {/* Footer Submit Button */}
@@ -437,6 +501,8 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
   },
   typeSelector: {
@@ -601,6 +667,29 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     textAlignVertical: 'top',
     minHeight: 80,
+  },
+  noteInputFocused: {
+    borderColor: colors.primary,
+    backgroundColor: '#FFFFFF',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dismissBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 8,
+  },
+  dismissText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   footer: {
     paddingHorizontal: 16,
