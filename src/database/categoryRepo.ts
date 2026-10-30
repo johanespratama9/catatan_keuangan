@@ -33,6 +33,20 @@ export const createCategory = async (
   return result.lastInsertRowId;
 };
 
+export const updateCategory = async (
+  id: number,
+  name: string,
+  icon: string,
+  color: string,
+  type: TransactionType
+): Promise<void> => {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE categories SET name = ?, icon = ?, color = ?, type = ? WHERE id = ?;',
+    [name.trim(), icon, color, type, id]
+  );
+};
+
 export const getCategoryTransactionCount = async (categoryId: number): Promise<number> => {
   const db = getDatabase();
   const res = await db.getFirstAsync<{ count: number }>(

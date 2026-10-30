@@ -24,6 +24,7 @@ import {
 import {
   getCategories,
   createCategory,
+  updateCategory,
   deleteCategory,
 } from './src/database/categoryRepo';
 
@@ -69,7 +70,9 @@ function MainApp() {
   const [isCatModalVisible, setIsCatModalVisible] = useState(false);
   const [isExcelModalVisible, setIsExcelModalVisible] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>('expense');
+  const [categoryModalDefaultType, setCategoryModalDefaultType] = useState<TransactionType>('expense');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
   // Load all app data from SQLite
   const loadData = useCallback(async () => {
@@ -168,19 +171,45 @@ function MainApp() {
     await loadData();
   };
 
+  const openAddCategory = (type: TransactionType = 'expense') => {
+    setSelectedCategory(null);
+    setCategoryModalDefaultType(type);
+    setIsCatModalVisible(true);
+  };
+
+  const openEditCategory = (cat: Category) => {
+    setSelectedCategory(cat);
+    setCategoryModalDefaultType(cat.type);
+    setIsCatModalVisible(true);
+  };
+
   const handleSaveCategory = async (data: {
     name: string;
     icon: string;
     color: string;
     type: TransactionType;
   }) => {
-    await createCategory(data.name, data.icon, data.color, data.type);
+    if (selectedCategory) {
+      await updateCategory(
+        selectedCategory.id,
+        data.name,
+        data.icon,
+        data.color,
+        data.type
+      );
+    } else {
+      await createCategory(data.name, data.icon, data.color, data.type);
+    }
     await loadData();
   };
 
   const handleDeleteCategory = async (id: number): Promise<boolean> => {
     const success = await deleteCategory(id);
     if (success) {
+      if (selectedCategory?.id === id) {
+        setIsCatModalVisible(false);
+        setSelectedCategory(null);
+      }
       await loadData();
     }
     return success;
@@ -253,7 +282,8 @@ function MainApp() {
               categories={categories}
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              onOpenCreateCategory={() => setIsCatModalVisible(true)}
+              onOpenCreateCategory={openAddCategory}
+              onEditCategory={openEditCategory}
               onDeleteCategory={handleDeleteCategory}
             />
           )}
@@ -379,8 +409,14 @@ function MainApp() {
 
         <CategoryModal
           visible={isCatModalVisible}
-          onClose={() => setIsCatModalVisible(false)}
+          initialCategory={selectedCategory}
+          defaultType={categoryModalDefaultType}
+          onClose={() => {
+            setIsCatModalVisible(false);
+            setSelectedCategory(null);
+          }}
           onSave={handleSaveCategory}
+          onDelete={handleDeleteCategory}
         />
 
         <ExcelModal
