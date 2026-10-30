@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { initDatabase } from './src/database/database';
@@ -47,7 +47,6 @@ import { colors } from './src/utils/colors';
 type TabType = 'home' | 'transactions' | 'analytics' | 'categories';
 
 function MainApp() {
-  const insets = useSafeAreaInsets();
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [refreshing, setRefreshing] = useState(false);
@@ -189,14 +188,13 @@ function MainApp() {
 
   if (!isReady) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style="dark" />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Menyiapkan Catatan Keuangan...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
-
-  const bottomNavPadding = Math.max(insets.bottom, 16) + (Platform.OS === 'ios' ? 6 : 10);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -262,7 +260,8 @@ function MainApp() {
         </View>
 
         {/* Bottom Navigation Bar */}
-        <View style={[styles.bottomNav, { paddingBottom: bottomNavPadding }]}>
+        <SafeAreaView edges={['bottom']} style={styles.bottomNavSafeArea}>
+          <View style={styles.bottomNav}>
           <TouchableOpacity
             style={styles.navItem}
             onPress={() => setActiveTab('home')}
@@ -362,6 +361,7 @@ function MainApp() {
             </Text>
           </TouchableOpacity>
         </View>
+      </SafeAreaView>
 
         {/* Modals */}
         <TransactionModal
@@ -423,12 +423,8 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '500',
   },
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+  bottomNavSafeArea: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     shadowColor: '#000',
@@ -436,6 +432,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 8,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 6 : 8,
   },
   navItem: {
     alignItems: 'center',

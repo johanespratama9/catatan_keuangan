@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../utils/colors';
 
 interface SplashScreenProps {
@@ -17,6 +18,7 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   statusText = 'Menyiapkan data keuangan...',
 }) => {
+  const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -49,7 +51,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   }, [fadeAnim, pulseAnim]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
 
       {/* Decorative ambient background glows */}
@@ -98,13 +100,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       </Animated.View>
 
       {/* Footer Branding */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>OFFLINE FIRST • SQLITE</Text>
         </View>
         <Text style={styles.versionText}>Versi 1.0.0</Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
