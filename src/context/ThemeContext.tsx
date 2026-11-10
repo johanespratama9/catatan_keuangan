@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { lightTheme, darkTheme, Theme } from '../utils/colors';
-import { getSetting, setSetting } from '../database/settingsRepo';
+import { getSetting, getSettingSync, setSetting } from '../database/settingsRepo';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -23,22 +23,17 @@ const SETTINGS_KEY = 'theme_mode';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-
-  // Load saved theme preference on start
-  useEffect(() => {
-    const loadThemePreference = async () => {
-      try {
-        const saved = await getSetting(SETTINGS_KEY);
-        if (saved === 'system' || saved === 'light' || saved === 'dark') {
-          setThemeModeState(saved as ThemeMode);
-        }
-      } catch (err) {
-        console.error('Failed to load theme preference:', err);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    try {
+      const saved = getSettingSync(SETTINGS_KEY);
+      if (saved === 'system' || saved === 'light' || saved === 'dark') {
+        return saved as ThemeMode;
       }
-    };
-    loadThemePreference();
-  }, []);
+    } catch {
+      // fallback to system
+    }
+    return 'system';
+  });
 
   const setThemeMode = useCallback(async (mode: ThemeMode) => {
     setThemeModeState(mode);

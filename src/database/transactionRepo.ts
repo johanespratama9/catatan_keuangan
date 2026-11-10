@@ -224,10 +224,8 @@ export const getFinancialSummary = async (
     params.push(endDate);
   }
 
-  const [incomeRes, expenseRes] = await Promise.all([
-    db.getFirstAsync<{ total: number }>(queryIncome, params),
-    db.getFirstAsync<{ total: number }>(queryExpense, params),
-  ]);
+  const incomeRes = await db.getFirstAsync<{ total: number }>(queryIncome, ...params);
+  const expenseRes = await db.getFirstAsync<{ total: number }>(queryExpense, ...params);
 
   const totalIncome = incomeRes?.total || 0;
   const totalExpense = expenseRes?.total || 0;

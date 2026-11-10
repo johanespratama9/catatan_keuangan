@@ -1,4 +1,7 @@
-import * as XLSX from 'xlsx';
+// Lazily resolve XLSX only when requested so startup bundle does not parse massive library
+const getXLSX = () => {
+  return require('xlsx');
+};
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
@@ -23,6 +26,7 @@ export const exportToExcel = async (
   categories: Category[],
   fileNamePrefix: string = 'Catatan_Keuangan'
 ): Promise<string> => {
+  const XLSX = getXLSX();
   // 1. Prepare Transactions Sheet data
   const txData = transactions.map((t, idx) => ({
     No: idx + 1,
@@ -125,6 +129,7 @@ export const exportToExcel = async (
  * Generate a template Excel (.xlsx) file for user to fill and import
  */
 export const downloadTemplateExcel = async (): Promise<string> => {
+  const XLSX = getXLSX();
   const templateData = [
     {
       Tanggal: '2026-10-14',
@@ -218,6 +223,7 @@ export const importFromExcel = async (
     });
 
     // 3. Parse workbook
+    const XLSX = getXLSX();
     const workbook = XLSX.read(base64Data, { type: 'base64' });
 
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -233,7 +239,7 @@ export const importFromExcel = async (
     // Pick first worksheet or one named "Transaksi" / "Daftar Transaksi"
     const targetSheetName =
       workbook.SheetNames.find(
-        (name) =>
+        (name: string) =>
           name.toLowerCase().includes('transaksi') ||
           name.toLowerCase().includes('data')
       ) || workbook.SheetNames[0];

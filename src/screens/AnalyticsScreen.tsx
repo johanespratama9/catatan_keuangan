@@ -120,11 +120,9 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   const loadFilteredData = useCallback(async () => {
     try {
       const { startDate, endDate } = activeDateRange;
-      const [sum, exp, inc] = await Promise.all([
-        getFinancialSummary(startDate, endDate),
-        getCategoryStats('expense', startDate, endDate),
-        getCategoryStats('income', startDate, endDate),
-      ]);
+      const sum = await getFinancialSummary(startDate, endDate);
+      const exp = await getCategoryStats('expense', startDate, endDate);
+      const inc = await getCategoryStats('income', startDate, endDate);
 
       setSummary(sum);
       setExpenseStats(exp);

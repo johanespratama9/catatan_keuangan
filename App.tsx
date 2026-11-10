@@ -81,24 +81,15 @@ function MainApp() {
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
-  // Load all app data from SQLite
+  // Load all app data from SQLite sequentially
   const loadData = useCallback(async () => {
     try {
-      const [
-        sumData,
-        txList,
-        recentList,
-        catList,
-        expStats,
-        incStats,
-      ] = await Promise.all([
-        getFinancialSummary(),
-        getTransactions(),
-        getRecentTransactions(5),
-        getCategories(),
-        getCategoryStats('expense'),
-        getCategoryStats('income'),
-      ]);
+      const sumData = await getFinancialSummary();
+      const txList = await getTransactions();
+      const recentList = await getRecentTransactions(5);
+      const catList = await getCategories();
+      const expStats = await getCategoryStats('expense');
+      const incStats = await getCategoryStats('income');
 
       setSummary(sumData);
       setTransactions(txList);

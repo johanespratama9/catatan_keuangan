@@ -7,6 +7,57 @@ let dbInstance: SQLite.SQLiteDatabase | null = null;
 export const getDatabase = (): SQLite.SQLiteDatabase => {
   if (!dbInstance) {
     dbInstance = SQLite.openDatabaseSync(DB_NAME);
+    // Pastikan schema tabel dibuat secara sinkron saat instance dibuka
+    dbInstance.execSync(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA foreign_keys = ON;
+
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        color TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+        is_default INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+        amount REAL NOT NULL,
+        category_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        note TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date);
+      CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions (category_id);
+      CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions (type);
+
+      CREATE TABLE IF NOT EXISTS labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS transaction_labels (
+        transaction_id INTEGER NOT NULL,
+        label_id INTEGER NOT NULL,
+        PRIMARY KEY (transaction_id, label_id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE,
+        FOREIGN KEY (label_id) REFERENCES labels (id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_trans_labels_trans ON transaction_labels (transaction_id);
+      CREATE INDEX IF NOT EXISTS idx_trans_labels_label ON transaction_labels (label_id);
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
   }
   return dbInstance;
 };
