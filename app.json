@@ -8,6 +8,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.catatankeuangan.app",
       "userInterfaceStyle": "automatic"
     },
     "android": {
