@@ -42,7 +42,37 @@ export const initDatabase = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date);
     CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions (category_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions (type);
+
+    CREATE TABLE IF NOT EXISTS labels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS transaction_labels (
+      transaction_id INTEGER NOT NULL,
+      label_id INTEGER NOT NULL,
+      PRIMARY KEY (transaction_id, label_id),
+      FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE,
+      FOREIGN KEY (label_id) REFERENCES labels (id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_trans_labels_trans ON transaction_labels (transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_trans_labels_label ON transaction_labels (label_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  // Seed default labels if empty
+  const labelCountResult = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM labels;'
+  );
+  if (!labelCountResult || labelCountResult.count === 0) {
+    await seedDefaultLabels(db);
+  }
 
   // Seed default categories if empty
   const categoryCountResult = await db.getFirstAsync<{ count: number }>(
@@ -96,10 +126,30 @@ const seedDefaultCategories = async (db: SQLite.SQLiteDatabase): Promise<void> =
     { name: 'Pemasukan Lain', icon: 'wallet', color: '#06B6D4', type: 'income' },
   ];
 
-  for (const cat of defaultCategories) {
+    for (const cat of defaultCategories) {
     await db.runAsync(
       'INSERT INTO categories (name, icon, color, type, is_default) VALUES (?, ?, ?, ?, 1);',
       [cat.name, cat.icon, cat.color, cat.type]
     );
+  }
+};
+
+const seedDefaultLabels = async (db: SQLite.SQLiteDatabase): Promise<void> => {
+  const defaultLabels = [
+    'Pribadi',
+    'Keluarga',
+    'Kantor',
+    'Bisnis',
+    'Hobi',
+    'Bulanan',
+    'Mendesak',
+  ];
+
+  for (const label of defaultLabels) {
+    try {
+      await db.runAsync('INSERT OR IGNORE INTO labels (name) VALUES (?);', [label]);
+    } catch (e) {
+      // Ignore if already exists
+    }
   }
 };

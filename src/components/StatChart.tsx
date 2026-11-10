@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryStat } from '../types';
 import { formatRupiah } from '../utils/formatters';
+import { useTheme } from '../context/ThemeContext';
 
 interface StatChartProps {
   stats: CategoryStat[];
@@ -15,11 +16,23 @@ export const StatChart: React.FC<StatChartProps> = ({
   title = 'Distribusi Kategori',
   emptyMessage = 'Belum ada data transaksi pada periode ini',
 }) => {
+  const { theme } = useTheme();
+
   if (stats.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="pie-chart-outline" size={48} color="#CBD5E1" />
-        <Text style={styles.emptyText}>{emptyMessage}</Text>
+      <View
+        style={[
+          styles.emptyContainer,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <Ionicons name="pie-chart-outline" size={48} color={theme.textMuted} />
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          {emptyMessage}
+        </Text>
       </View>
     );
   }
@@ -27,14 +40,29 @@ export const StatChart: React.FC<StatChartProps> = ({
   const grandTotal = stats.reduce((acc, curr) => acc + curr.total_amount, 0);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+        },
+      ]}
+    >
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.totalText}>{formatRupiah(grandTotal)}</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>{title}</Text>
+        <Text style={[styles.totalText, { color: theme.textPrimary }]}>
+          {formatRupiah(grandTotal)}
+        </Text>
       </View>
 
       {/* Multi-segment stacked progress bar */}
-      <View style={styles.stackedBarContainer}>
+      <View
+        style={[
+          styles.stackedBarContainer,
+          { backgroundColor: theme.surfaceSecondary },
+        ]}
+      >
         {stats.map((item, idx) => (
           <View
             key={`bar-${item.category_id}-${idx}`}
@@ -72,16 +100,26 @@ export const StatChart: React.FC<StatChartProps> = ({
 
             <View style={styles.middle}>
               <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={1}>
+                <Text
+                  style={[styles.name, { color: theme.textPrimary }]}
+                  numberOfLines={1}
+                >
                   {item.category_name}
                 </Text>
-                <Text style={styles.percentText}>
+                <Text
+                  style={[styles.percentText, { color: theme.textSecondary }]}
+                >
                   {item.percentage.toFixed(1)}%
                 </Text>
               </View>
 
               {/* Progress bar */}
-              <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarBg,
+                  { backgroundColor: theme.surfaceSecondary },
+                ]}
+              >
                 <View
                   style={[
                     styles.progressBarFill,
@@ -93,12 +131,16 @@ export const StatChart: React.FC<StatChartProps> = ({
                 />
               </View>
 
-              <Text style={styles.countText}>{item.count} transaksi</Text>
+              <Text style={[styles.countText, { color: theme.textMuted }]}>
+                {item.count} transaksi
+              </Text>
             </View>
 
             {/* Right: Amount */}
             <View style={styles.right}>
-              <Text style={styles.amount}>{formatRupiah(item.total_amount)}</Text>
+              <Text style={[styles.amount, { color: theme.textPrimary }]}>
+                {formatRupiah(item.total_amount)}
+              </Text>
             </View>
           </View>
         ))}

@@ -16,9 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Category, TransactionType, TransactionWithCategory } from '../types';
+import { Category, TransactionType, TransactionWithCategory, Label } from '../types';
+import { getAllLabels } from '../database/labelRepo';
 import { formatRupiah, toISODateString, formatDate } from '../utils/formatters';
 import { colors } from '../utils/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface TransactionModalProps {
   visible: boolean;
@@ -32,6 +34,7 @@ interface TransactionModalProps {
     categoryId: number;
     date: string;
     note?: string;
+    labels?: string[];
   }) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
 }
@@ -45,14 +48,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  const { theme, isDark } = useTheme();
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amountStr, setAmountStr] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [note, setNote] = useState<string>('');
+  const [allLabels, setAllLabels] = useState<Label[]>([]);
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [customLabelInput, setCustomLabelInput] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const [isNoteFocused, setIsNoteFocused] = useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
 
@@ -90,23 +97,62 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   useEffect(() => {
     if (visible) {
+      // Load all available labels
+      getAllLabels().then((labels) => {
+        setAllLabels(labels);
+      }).catch(() => {});
+
       if (initialTransaction) {
         setType(initialTransaction.type);
         setAmountStr(String(Math.round(initialTransaction.amount)));
         setSelectedCategoryId(initialTransaction.category_id);
         setDate(new Date(initialTransaction.date + 'T00:00:00'));
         setNote(initialTransaction.note || '');
+        setSelectedLabels(initialTransaction.labels || []);
       } else {
         setType(defaultType);
         setAmountStr('');
         setDate(new Date());
         setNote('');
+        setSelectedLabels([]);
         // Select first matching category
         const firstCat = categories.find((c) => c.type === defaultType);
         setSelectedCategoryId(firstCat ? firstCat.id : null);
       }
+      setCustomLabelInput('');
     }
   }, [visible, initialTransaction, defaultType, categories]);
+
+  const handleToggleLabel = (labelName: string) => {
+    const trimmed = labelName.trim();
+    if (!trimmed) return;
+    setSelectedLabels((prev) => {
+      const exists = prev.some((l) => l.toLowerCase() === trimmed.toLowerCase());
+      if (exists) {
+        return prev.filter((l) => l.toLowerCase() !== trimmed.toLowerCase());
+      } else {
+        return [...prev, trimmed];
+      }
+    });
+  };
+
+  const handleAddCustomLabel = () => {
+    const trimmed = customLabelInput.trim();
+    if (!trimmed) return;
+
+    setSelectedLabels((prev) => {
+      const exists = prev.some((l) => l.toLowerCase() === trimmed.toLowerCase());
+      return exists ? prev : [...prev, trimmed];
+    });
+
+    setAllLabels((prev) => {
+      const exists = prev.some((l) => l.name.toLowerCase() === trimmed.toLowerCase());
+      if (exists) return prev;
+      return [...prev, { id: Date.now(), name: trimmed }];
+    });
+
+    setCustomLabelInput('');
+  };
 
   // When type changes, select appropriate default category if current is not of matching type
   const handleTypeChange = (newType: TransactionType) => {
@@ -159,6 +205,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         categoryId: selectedCategoryId,
         date: toISODateString(date),
         note: note.trim() || undefined,
+        labels: selectedLabels,
       });
       onClose();
     } catch (error: any) {
@@ -205,18 +252,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark" />
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.card }]}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.container}
+          style={[styles.container, { backgroundColor: theme.card }]}
         >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color="#64748B" />
+            <Ionicons name="close" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
             {initialTransaction ? 'Edit Catatan' : 'Tambah Catatan'}
           </Text>
           {initialTransaction && onDelete ? (
@@ -230,7 +280,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
         <ScrollView
           ref={scrollViewRef}
-          style={styles.body}
+          style={[styles.body, { backgroundColor: theme.card }]}
           contentContainerStyle={[
             styles.scrollContent,
             {
@@ -247,7 +297,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {/* Expense / Income Toggle */}
-          <View style={styles.typeSelector}>
+          <View
+            style={[
+              styles.typeSelector,
+              { backgroundColor: theme.surfaceSecondary },
+            ]}
+          >
             <TouchableOpacity
               style={[
                 styles.typeButton,
@@ -264,6 +319,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <Text
                 style={[
                   styles.typeButtonText,
+                  {
+                    color:
+                      type === 'expense' ? '#FFFFFF' : theme.textSecondary,
+                  },
                   type === 'expense' && styles.typeButtonTextActive,
                 ]}
               >
@@ -287,6 +346,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <Text
                 style={[
                   styles.typeButtonText,
+                  {
+                    color:
+                      type === 'income' ? '#FFFFFF' : theme.textSecondary,
+                  },
                   type === 'income' && styles.typeButtonTextActive,
                 ]}
               >
@@ -297,21 +360,33 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Amount Input */}
           <View style={styles.inputSection}>
-            <Text style={styles.sectionLabel}>Nominal</Text>
-            <View style={styles.amountInputRow}>
-              <Text style={styles.currencyPrefix}>Rp</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Nominal
+            </Text>
+            <View
+              style={[
+                styles.amountInputRow,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.inputBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.currencyPrefix, { color: theme.textPrimary }]}>
+                Rp
+              </Text>
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: theme.textPrimary }]}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.textMuted}
                 value={amountStr ? parseInt(amountStr, 10).toLocaleString('id-ID') : ''}
                 onChangeText={handleAmountChange}
                 autoFocus={!initialTransaction}
               />
             </View>
             {numericVal > 0 && (
-              <Text style={styles.terbilangPreview}>
+              <Text style={[styles.terbilangPreview, { color: theme.textSecondary }]}>
                 {formatRupiah(numericVal)}
               </Text>
             )}
@@ -320,8 +395,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {/* Category Picker */}
           <View style={styles.inputSection}>
             <View style={styles.labelRow}>
-              <Text style={styles.sectionLabel}>Kategori</Text>
-              <Text style={styles.subHint}>
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                Kategori
+              </Text>
+              <Text style={[styles.subHint, { color: theme.textMuted }]}>
                 {filteredCategories.length} kategori tersedia
               </Text>
             </View>
@@ -334,9 +411,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     key={cat.id}
                     style={[
                       styles.categoryCard,
+                      {
+                        backgroundColor: theme.surfaceSecondary,
+                        borderColor: theme.border,
+                      },
                       isSelected && {
                         borderColor: cat.color,
-                        backgroundColor: `${cat.color}15`,
+                        backgroundColor: `${cat.color}20`,
                       },
                     ]}
                     onPress={() => setSelectedCategoryId(cat.id)}
@@ -357,6 +438,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     <Text
                       style={[
                         styles.catName,
+                        { color: theme.textPrimary },
                         isSelected && { color: cat.color, fontWeight: '700' },
                       ]}
                       numberOfLines={1}
@@ -371,14 +453,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* Date Picker */}
           <View style={styles.inputSection}>
-            <Text style={styles.sectionLabel}>Tanggal</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Tanggal</Text>
             <View style={styles.dateRow}>
               <TouchableOpacity
-                style={styles.dateSelector}
+                style={[
+                  styles.dateSelector,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                  },
+                ]}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Ionicons name="calendar-outline" size={20} color="#2563EB" />
-                <Text style={styles.dateValueText}>
+                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+                <Text style={[styles.dateValueText, { color: theme.textPrimary }]}>
                   {formatDate(toISODateString(date))} ({toISODateString(date)})
                 </Text>
               </TouchableOpacity>
@@ -386,14 +474,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.quickDateBtn,
-                  toISODateString(date) === toISODateString(new Date()) &&
+                  { backgroundColor: theme.surfaceSecondary },
+                  toISODateString(date) === toISODateString(new Date()) && [
                     styles.quickDateBtnActive,
+                    { backgroundColor: theme.primary },
+                  ],
                 ]}
                 onPress={() => setQuickDate(0)}
               >
                 <Text
                   style={[
                     styles.quickDateText,
+                    { color: theme.textSecondary },
                     toISODateString(date) === toISODateString(new Date()) &&
                       styles.quickDateTextActive,
                   ]}
@@ -403,10 +495,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.quickDateBtn}
+                style={[
+                  styles.quickDateBtn,
+                  { backgroundColor: theme.surfaceSecondary },
+                ]}
                 onPress={() => setQuickDate(1)}
               >
-                <Text style={styles.quickDateText}>Kemarin</Text>
+                <Text style={[styles.quickDateText, { color: theme.textSecondary }]}>Kemarin</Text>
               </TouchableOpacity>
             </View>
 
@@ -414,6 +509,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <DateTimePicker
                 value={date}
                 mode="date"
+                themeVariant={isDark ? 'dark' : 'light'}
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 onChange={handleDateChange}
                 maximumDate={new Date(2035, 11, 31)}
@@ -424,25 +520,40 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {/* Note Input */}
           <View style={styles.inputSection}>
             <View style={styles.labelRow}>
-              <Text style={styles.sectionLabel}>Catatan (Opsional)</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Catatan (Opsional)</Text>
               {isNoteFocused && (
                 <TouchableOpacity
                   onPress={() => Keyboard.dismiss()}
-                  style={styles.dismissBtn}
+                  style={[
+                    styles.dismissBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(59, 130, 246, 0.2)'
+                        : '#EFF6FF',
+                    },
+                  ]}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="checkmark-done" size={15} color={colors.primary} />
-                  <Text style={styles.dismissText}>Selesai Mengetik</Text>
+                  <Ionicons name="checkmark-done" size={15} color={theme.primary} />
+                  <Text style={[styles.dismissText, { color: theme.primary }]}>Selesai Mengetik</Text>
                 </TouchableOpacity>
               )}
             </View>
             <TextInput
               style={[
                 styles.noteInput,
-                isNoteFocused && styles.noteInputFocused,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.inputBorder,
+                  color: theme.textPrimary,
+                },
+                isNoteFocused && {
+                  borderColor: theme.primary,
+                  backgroundColor: theme.card,
+                },
               ]}
               placeholder="Contoh: Makan siang dengan rekan kerja"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.textMuted}
               value={note}
               onChangeText={setNote}
               onFocus={handleNoteFocus}
@@ -451,10 +562,115 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               numberOfLines={3}
             />
           </View>
+
+          {/* Label Section */}
+          <View style={styles.inputSection}>
+            <View style={styles.labelRow}>
+              <View style={styles.labelTitleRow}>
+                <Ionicons name="pricetag-outline" size={16} color={theme.textSecondary} />
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Label Transaksi</Text>
+              </View>
+              {selectedLabels.length > 0 && (
+                <View
+                  style={[
+                    styles.selectedCountBadge,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(59, 130, 246, 0.2)'
+                        : '#EFF6FF',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.selectedCountText, { color: theme.primary }]}>
+                    {selectedLabels.length} dipilih
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.sectionHint, { color: theme.textMuted }]}>
+              Pilih label terdaftar atau buat label baru (tanpa batas)
+            </Text>
+
+            {/* Custom Label Input */}
+            <View style={styles.labelInputRow}>
+              <TextInput
+                style={[
+                  styles.labelTextInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
+                placeholder="Ketik label baru (misal: Liburan, Proyek)..."
+                placeholderTextColor={theme.textMuted}
+                value={customLabelInput}
+                onChangeText={setCustomLabelInput}
+                onSubmitEditing={handleAddCustomLabel}
+                returnKeyType="done"
+              />
+              <TouchableOpacity
+                style={[
+                  styles.addLabelBtn,
+                  { backgroundColor: theme.primary },
+                  !customLabelInput.trim() && styles.addLabelBtnDisabled,
+                ]}
+                onPress={handleAddCustomLabel}
+                disabled={!customLabelInput.trim()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add" size={17} color="#FFFFFF" />
+                <Text style={styles.addLabelBtnText}>Tambah</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Chips List */}
+            <View style={styles.labelChipsWrap}>
+              {allLabels.map((lbl) => {
+                const isSelected = selectedLabels.some(
+                  (s) => s.toLowerCase() === lbl.name.toLowerCase()
+                );
+                return (
+                  <TouchableOpacity
+                    key={lbl.id ? `lbl-${lbl.id}` : `lbl-${lbl.name}`}
+                    style={[
+                      styles.labelChip,
+                      {
+                        backgroundColor: theme.surfaceSecondary,
+                        borderColor: theme.border,
+                        borderWidth: 1,
+                      },
+                      isSelected && (type === 'income' ? styles.labelChipIncomeSelected : styles.labelChipExpenseSelected),
+                    ]}
+                    onPress={() => handleToggleLabel(lbl.name)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.labelChipText,
+                        { color: theme.textSecondary },
+                        isSelected && styles.labelChipTextSelected,
+                      ]}
+                    >
+                      #{lbl.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons
+                        name="checkmark"
+                        size={13}
+                        color="#FFFFFF"
+                        style={{ marginLeft: 3 }}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
         </ScrollView>
 
         {/* Footer Submit Button */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TouchableOpacity
             style={[
               styles.submitBtn,
@@ -728,5 +944,93 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  labelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectedCountBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  selectedCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 10,
+    marginTop: -2,
+  },
+  labelInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  labelTextInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  addLabelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  addLabelBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  addLabelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  labelChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  labelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  labelChipExpenseSelected: {
+    backgroundColor: '#EF4444',
+    borderColor: '#DC2626',
+  },
+  labelChipIncomeSelected: {
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
+  },
+  labelChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  labelChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

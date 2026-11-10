@@ -19,10 +19,17 @@ export interface Transaction {
   created_at?: string;
 }
 
+export interface Label {
+  id: number;
+  name: string;
+  created_at?: string;
+}
+
 export interface TransactionWithCategory extends Transaction {
   category_name: string;
   category_icon: string;
   category_color: string;
+  labels?: string[];
 }
 
 export interface FinancialSummary {
@@ -47,4 +54,5 @@ export interface FilterOptions {
   startDate?: string;
   endDate?: string;
   searchQuery?: string;
+  label?: string;
 }

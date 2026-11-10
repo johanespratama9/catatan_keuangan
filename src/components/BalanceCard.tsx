@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FinancialSummary } from '../types';
 import { formatRupiah } from '../utils/formatters';
-import { colors } from '../utils/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface BalanceCardProps {
   summary: FinancialSummary;
@@ -16,8 +16,18 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   periodLabel = 'Bulan Ini',
   onPressPeriod,
 }) => {
+  const { isDark } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          borderColor: isDark ? '#26344A' : 'transparent',
+          borderWidth: isDark ? 1 : 0,
+        },
+      ]}
+    >
       {/* Header card with period */}
       <View style={styles.topRow}>
         <Text style={styles.label}>Total Saldo</Text>

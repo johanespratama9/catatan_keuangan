@@ -30,6 +30,7 @@ export const exportToExcel = async (
     Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
     Kategori: t.category_name,
     'Nominal (Rp)': t.amount,
+    Label: t.labels && t.labels.length > 0 ? t.labels.join(', ') : '',
     Catatan: t.note || '',
   }));
 

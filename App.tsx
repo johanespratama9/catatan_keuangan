@@ -8,8 +8,9 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 
 import { initDatabase } from './src/database/database';
 import {
@@ -43,11 +44,16 @@ import { CategoriesScreen } from './src/screens/CategoriesScreen';
 import { TransactionModal } from './src/components/TransactionModal';
 import { CategoryModal } from './src/components/CategoryModal';
 import { ExcelModal } from './src/components/ExcelModal';
+import { ThemeModal } from './src/components/ThemeModal';
+import { LiquidGlassTabBar } from './src/components/LiquidGlassTabBar';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { colors } from './src/utils/colors';
 
 type TabType = 'home' | 'transactions' | 'analytics' | 'categories';
 
 function MainApp() {
+  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [refreshing, setRefreshing] = useState(false);
@@ -69,6 +75,7 @@ function MainApp() {
   const [isTxModalVisible, setIsTxModalVisible] = useState(false);
   const [isCatModalVisible, setIsCatModalVisible] = useState(false);
   const [isExcelModalVisible, setIsExcelModalVisible] = useState(false);
+  const [isThemeModalVisible, setIsThemeModalVisible] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>('expense');
   const [categoryModalDefaultType, setCategoryModalDefaultType] = useState<TransactionType>('expense');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
@@ -144,6 +151,7 @@ function MainApp() {
     categoryId: number;
     date: string;
     note?: string;
+    labels?: string[];
   }) => {
     if (selectedTransaction) {
       await updateTransaction(
@@ -152,7 +160,8 @@ function MainApp() {
         data.amount,
         data.categoryId,
         data.date,
-        data.note
+        data.note,
+        data.labels
       );
     } else {
       await createTransaction(
@@ -160,7 +169,8 @@ function MainApp() {
         data.amount,
         data.categoryId,
         data.date,
-        data.note
+        data.note,
+        data.labels
       );
     }
     await loadData();
@@ -217,223 +227,147 @@ function MainApp() {
 
   if (!isReady) {
     return (
-      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Menyiapkan Catatan Keuangan...</Text>
+      <SafeAreaView
+        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+          Menyiapkan Catatan Keuangan...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.card }]}
+      edges={['top', 'left', 'right']}
+    >
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
-        {/* Screen Content */}
-        <View style={styles.screenContainer}>
-          {activeTab === 'home' && (
-            <HomeScreen
-              summary={summary}
-              allTransactions={transactions}
-              recentTransactions={recentTransactions}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              onOpenAddModal={openAddTransaction}
-              onSelectTransaction={openEditTransaction}
-              onNavigateToTransactions={() => {
-                setTransactionPeriodFilter('all');
-                setActiveTab('transactions');
-              }}
-              onNavigateToTodayTransactions={() => {
-                setTransactionPeriodFilter('today');
-                setActiveTab('transactions');
-              }}
-              onNavigateToAnalytics={() => setActiveTab('analytics')}
-              onNavigateToCategories={() => setActiveTab('categories')}
-              onOpenExcelModal={() => setIsExcelModalVisible(true)}
-            />
-          )}
+      {/* Screen Content */}
+      <View
+        style={[styles.screenContainer, { backgroundColor: theme.background }]}
+      >
+        {activeTab === 'home' && (
+          <HomeScreen
+            summary={summary}
+            allTransactions={transactions}
+            recentTransactions={recentTransactions}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onOpenAddModal={openAddTransaction}
+            onSelectTransaction={openEditTransaction}
+            onNavigateToTransactions={() => {
+              setTransactionPeriodFilter('all');
+              setActiveTab('transactions');
+            }}
+            onNavigateToTodayTransactions={() => {
+              setTransactionPeriodFilter('today');
+              setActiveTab('transactions');
+            }}
+            onNavigateToAnalytics={() => setActiveTab('analytics')}
+            onNavigateToCategories={() => setActiveTab('categories')}
+            onOpenExcelModal={() => setIsExcelModalVisible(true)}
+            onOpenThemeModal={() => setIsThemeModalVisible(true)}
+          />
+        )}
 
-          {activeTab === 'transactions' && (
-            <TransactionsScreen
-              transactions={transactions}
-              initialPeriod={transactionPeriodFilter}
-              onPeriodChange={setTransactionPeriodFilter}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              onSelectTransaction={openEditTransaction}
-              onOpenAddModal={openAddTransaction}
-              onOpenExcelModal={() => setIsExcelModalVisible(true)}
-            />
-          )}
+        {activeTab === 'transactions' && (
+          <TransactionsScreen
+            transactions={transactions}
+            initialPeriod={transactionPeriodFilter}
+            onPeriodChange={setTransactionPeriodFilter}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onSelectTransaction={openEditTransaction}
+            onOpenAddModal={openAddTransaction}
+            onOpenExcelModal={() => setIsExcelModalVisible(true)}
+            onOpenThemeModal={() => setIsThemeModalVisible(true)}
+          />
+        )}
 
-          {activeTab === 'analytics' && (
-            <AnalyticsScreen
-              summary={summary}
-              expenseStats={expenseStats}
-              incomeStats={incomeStats}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-            />
-          )}
+        {activeTab === 'analytics' && (
+          <AnalyticsScreen
+            summary={summary}
+            expenseStats={expenseStats}
+            incomeStats={incomeStats}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onOpenThemeModal={() => setIsThemeModalVisible(true)}
+          />
+        )}
 
-          {activeTab === 'categories' && (
-            <CategoriesScreen
-              categories={categories}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              onOpenCreateCategory={openAddCategory}
-              onEditCategory={openEditCategory}
-              onDeleteCategory={handleDeleteCategory}
-            />
-          )}
-        </View>
+        {activeTab === 'categories' && (
+          <CategoriesScreen
+            categories={categories}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onOpenCreateCategory={openAddCategory}
+            onEditCategory={openEditCategory}
+            onDeleteCategory={handleDeleteCategory}
+            onOpenThemeModal={() => setIsThemeModalVisible(true)}
+          />
+        )}
+      </View>
 
-        {/* Bottom Navigation Bar */}
-        <SafeAreaView edges={['bottom']} style={styles.bottomNavSafeArea}>
-          <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('home')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={activeTab === 'home' ? 'home' : 'home-outline'}
-              size={22}
-              color={activeTab === 'home' ? colors.primary : '#94A3B8'}
-            />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === 'home' && styles.navLabelActive,
-              ]}
-            >
-              Beranda
-            </Text>
-          </TouchableOpacity>
+      {/* Apple Music & WhatsApp Liquid Glass Floating Dock */}
+      <LiquidGlassTabBar
+        activeTab={activeTab}
+        onTabPress={setActiveTab}
+        bottomInset={insets.bottom}
+      />
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('transactions')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={
-                activeTab === 'transactions'
-                  ? 'receipt'
-                  : 'receipt-outline'
-              }
-              size={22}
-              color={activeTab === 'transactions' ? colors.primary : '#94A3B8'}
-            />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === 'transactions' && styles.navLabelActive,
-              ]}
-            >
-              Transaksi
-            </Text>
-          </TouchableOpacity>
+      {/* Modals */}
+      <TransactionModal
+        visible={isTxModalVisible}
+        categories={categories}
+        initialTransaction={selectedTransaction}
+        defaultType={modalDefaultType}
+        onClose={() => {
+          setIsTxModalVisible(false);
+          setSelectedTransaction(null);
+        }}
+        onSave={handleSaveTransaction}
+        onDelete={handleDeleteTransaction}
+      />
 
-          {/* Quick Floating Add Button */}
-          <TouchableOpacity
-            style={styles.addNavButton}
-            onPress={() => openAddTransaction('expense')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
+      <CategoryModal
+        visible={isCatModalVisible}
+        initialCategory={selectedCategory}
+        defaultType={categoryModalDefaultType}
+        onClose={() => {
+          setIsCatModalVisible(false);
+          setSelectedCategory(null);
+        }}
+        onSave={handleSaveCategory}
+        onDelete={handleDeleteCategory}
+      />
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('analytics')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={
-                activeTab === 'analytics'
-                  ? 'pie-chart'
-                  : 'pie-chart-outline'
-              }
-              size={22}
-              color={activeTab === 'analytics' ? colors.primary : '#94A3B8'}
-            />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === 'analytics' && styles.navLabelActive,
-              ]}
-            >
-              Statistik
-            </Text>
-          </TouchableOpacity>
+      <ExcelModal
+        visible={isExcelModalVisible}
+        transactions={transactions}
+        categories={categories}
+        onClose={() => setIsExcelModalVisible(false)}
+        onDataImported={loadData}
+      />
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => setActiveTab('categories')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={
-                activeTab === 'categories' ? 'grid' : 'grid-outline'
-              }
-              size={22}
-              color={activeTab === 'categories' ? colors.primary : '#94A3B8'}
-            />
-            <Text
-              style={[
-                styles.navLabel,
-                activeTab === 'categories' && styles.navLabelActive,
-              ]}
-            >
-              Kategori
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
-        {/* Modals */}
-        <TransactionModal
-          visible={isTxModalVisible}
-          categories={categories}
-          initialTransaction={selectedTransaction}
-          defaultType={modalDefaultType}
-          onClose={() => {
-            setIsTxModalVisible(false);
-            setSelectedTransaction(null);
-          }}
-          onSave={handleSaveTransaction}
-          onDelete={handleDeleteTransaction}
-        />
-
-        <CategoryModal
-          visible={isCatModalVisible}
-          initialCategory={selectedCategory}
-          defaultType={categoryModalDefaultType}
-          onClose={() => {
-            setIsCatModalVisible(false);
-            setSelectedCategory(null);
-          }}
-          onSave={handleSaveCategory}
-          onDelete={handleDeleteCategory}
-        />
-
-        <ExcelModal
-          visible={isExcelModalVisible}
-          transactions={transactions}
-          categories={categories}
-          onClose={() => setIsExcelModalVisible(false)}
-          onDataImported={loadData}
-        />
-      </SafeAreaView>
+      <ThemeModal
+        visible={isThemeModalVisible}
+        onClose={() => setIsThemeModalVisible(false)}
+      />
+    </SafeAreaView>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <MainApp />
+      <ThemeProvider>
+        <MainApp />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -458,53 +392,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     fontWeight: '500',
-  },
-  bottomNavSafeArea: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 6 : 8,
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 4,
-  },
-  navLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#94A3B8',
-    marginTop: 3,
-  },
-  navLabelActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  addNavButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
   },
 });

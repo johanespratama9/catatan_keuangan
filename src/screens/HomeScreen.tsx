@@ -18,6 +18,7 @@ import {
 } from '../types';
 import { colors } from '../utils/colors';
 import { formatRupiah, toISODateString } from '../utils/formatters';
+import { useTheme } from '../context/ThemeContext';
 
 interface HomeScreenProps {
   summary: FinancialSummary;
@@ -29,9 +30,10 @@ interface HomeScreenProps {
   onSelectTransaction: (item: TransactionWithCategory) => void;
   onNavigateToTransactions: () => void;
   onNavigateToTodayTransactions?: () => void;
-  onNavigateToAnalytics: () => void;
-  onNavigateToCategories: () => void;
-  onOpenExcelModal: () => void;
+  onNavigateToAnalytics?: () => void;
+  onNavigateToCategories?: () => void;
+  onOpenExcelModal?: () => void;
+  onOpenThemeModal?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -47,7 +49,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToAnalytics,
   onNavigateToCategories,
   onOpenExcelModal,
+  onOpenThemeModal,
 }) => {
+  const { theme, isDark, themeMode } = useTheme();
   const todayStr = toISODateString(new Date());
   const todayDateObj = new Date();
   const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -67,7 +71,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const todayExpenseCount = todayExpenses.length;
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -82,26 +86,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             resizeMode="cover"
           /> */}
           <View>
-            <Text style={styles.greetingTitle}>Catatan Keuangan</Text>
-            <Text style={styles.greetingSubtitle}>Kelola finansial Anda dengan rapi</Text>
+            <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>Catatan Keuangan</Text>
+            <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>Kelola finansial Anda dengan rapi</Text>
           </View>
         </View>
-        <View style={styles.headerBtnGroup}>
+
+        {onOpenThemeModal && (
           <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={onOpenExcelModal}
+            style={[
+              styles.themeToggleBtn,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={onOpenThemeModal}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="document-text-outline" size={20} color="#16A34A" />
+            <Ionicons
+              name={
+                themeMode === 'system'
+                  ? 'phone-portrait-outline'
+                  : themeMode === 'dark'
+                  ? 'moon'
+                  : 'sunny'
+              }
+              size={18}
+              color={theme.primary}
+            />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={onNavigateToCategories}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pricetags-outline" size={20} color="#1E293B" />
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
 
       {/* Main Balance Card */}
@@ -113,148 +128,166 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* Pengeluaran Hari Ini Card */}
       <TouchableOpacity
-        style={styles.todayCard}
+        style={[
+          styles.todayCard,
+          {
+            backgroundColor: theme.card,
+            borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FEE2E2',
+          },
+        ]}
         onPress={onNavigateToTodayTransactions || onNavigateToTransactions}
         activeOpacity={0.82}
       >
-        <View style={styles.todayCardContent}>
-          <View style={styles.todayIconWrap}>
-            <Ionicons name="calendar" size={22} color="#EF4444" />
-          </View>
-          <View style={styles.todayInfo}>
-            <View style={styles.todayTopRow}>
-              <Text style={styles.todayCardTitle}>Pengeluaran Hari Ini</Text>
-              <View style={styles.todayDateTag}>
-                <Text style={styles.todayDateTagText}>{todayFormatted}</Text>
-              </View>
-            </View>
-
-            <Text
+        <View style={styles.todayHeaderRow}>
+          <View style={styles.todayTitleBlock}>
+            <View
               style={[
-                styles.todayExpenseAmount,
-                todayExpenseTotal === 0 && styles.todayExpenseZero,
+                styles.todayIconWrap,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(239, 68, 68, 0.2)'
+                    : '#FEF2F2',
+                },
               ]}
             >
-              {formatRupiah(todayExpenseTotal)}
-            </Text>
-
-            <View style={styles.todayBottomRow}>
-              <Text style={styles.todayTransCount}>
-                {todayExpenseCount > 0
-                  ? `${todayExpenseCount} transaksi dicatat`
-                  : 'Belum ada pengeluaran'}
-              </Text>
-              {todayIncomeTotal > 0 && (
-                <Text style={styles.todayIncomeSub}>
-                  • Pemasukan: +{formatRupiah(todayIncomeTotal)}
-                </Text>
-              )}
+              <Ionicons name="calendar" size={18} color="#EF4444" />
             </View>
+            <View style={styles.todayTitleTextWrap}>
+              <Text style={[styles.todayCardTitle, { color: theme.textPrimary }]}>
+                Pengeluaran Hari Ini
+              </Text>
+              <Text style={[styles.todayDateSubtitle, { color: theme.textSecondary }]}>
+                {todayFormatted}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.todayDetailPill,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(59, 130, 246, 0.2)'
+                  : '#EFF6FF',
+              },
+            ]}
+          >
+            <Text style={[styles.todayDetailText, { color: theme.primary }]}>
+              Rincian
+            </Text>
+            <Ionicons name="chevron-forward" size={13} color={theme.primary} />
           </View>
         </View>
 
-        <View style={styles.todayChevronWrap}>
-          <Text style={styles.todayDetailText}>Rincian</Text>
-          <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+        <View style={styles.todayBody}>
+          <Text
+            style={[
+              styles.todayExpenseAmount,
+              todayExpenseTotal === 0 && { color: theme.textSecondary },
+            ]}
+          >
+            {formatRupiah(todayExpenseTotal)}
+          </Text>
+
+          <View style={styles.todayBottomRow}>
+            <Text style={[styles.todayTransCount, { color: theme.textMuted }]}>
+              {todayExpenseCount > 0
+                ? `${todayExpenseCount} transaksi dicatat`
+                : 'Belum ada pengeluaran'}
+            </Text>
+            {todayIncomeTotal > 0 && (
+              <Text style={styles.todayIncomeSub}>
+                • Pemasukan: +{formatRupiah(todayIncomeTotal)}
+              </Text>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
 
       {/* Quick Action Buttons */}
       <View style={styles.quickActionsContainer}>
         <TouchableOpacity
-          style={[styles.quickActionBtn, styles.expenseBtn]}
+          style={[
+            styles.quickActionBtn,
+            styles.expenseBtn,
+            isDark && {
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              borderColor: 'rgba(239, 68, 68, 0.35)',
+            },
+          ]}
           onPress={() => onOpenAddModal('expense')}
           activeOpacity={0.8}
         >
           <View style={styles.actionIconWrapExpense}>
             <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
           </View>
-          <Text style={styles.actionBtnTextExpense}>+ Pengeluaran</Text>
+          <Text
+            style={[
+              styles.actionBtnTextExpense,
+              isDark && { color: '#F87171' },
+            ]}
+          >
+            + Pengeluaran
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickActionBtn, styles.incomeBtn]}
+          style={[
+            styles.quickActionBtn,
+            styles.incomeBtn,
+            isDark && {
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              borderColor: 'rgba(16, 185, 129, 0.35)',
+            },
+          ]}
           onPress={() => onOpenAddModal('income')}
           activeOpacity={0.8}
         >
           <View style={styles.actionIconWrapIncome}>
             <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
           </View>
-          <Text style={styles.actionBtnTextIncome}>+ Pemasukan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Shortcuts Row */}
-      <View style={styles.shortcutRow}>
-        <TouchableOpacity
-          style={styles.shortcutCard}
-          onPress={onNavigateToAnalytics}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.shortcutIconWrap, { backgroundColor: '#EEF2FF' }]}>
-            <Ionicons name="pie-chart" size={20} color="#4F46E5" />
-          </View>
-          <View>
-            <Text style={styles.shortcutTitle}>Analisis Finansial</Text>
-            <Text style={styles.shortcutDesc}>Grafik & persentase</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.shortcutCard}
-          onPress={onNavigateToCategories}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.shortcutIconWrap, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="apps" size={20} color="#16A34A" />
-          </View>
-          <View>
-            <Text style={styles.shortcutTitle}>Kategori</Text>
-            <Text style={styles.shortcutDesc}>Atur pos pengeluaran</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Excel Export & Import Card */}
-      <TouchableOpacity
-        style={styles.excelBannerCard}
-        onPress={onOpenExcelModal}
-        activeOpacity={0.8}
-      >
-        <View style={styles.excelBannerIconWrap}>
-          <Ionicons name="document-text" size={24} color="#16A34A" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={styles.excelBannerTitleRow}>
-            <Text style={styles.excelBannerTitle}>Ekspor & Impor Excel</Text>
-            <View style={styles.excelTag}>
-              <Text style={styles.excelTagText}>.XLSX</Text>
-            </View>
-          </View>
-          <Text style={styles.excelBannerDesc}>
-            Cadangkan data atau impor transaksi dari file Excel
+          <Text
+            style={[
+              styles.actionBtnTextIncome,
+              isDark && { color: '#34D399' },
+            ]}
+          >
+            + Pemasukan
           </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
 
       {/* Recent Transactions Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Transaksi Terbaru</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Transaksi Terbaru
+        </Text>
         <TouchableOpacity
           onPress={onNavigateToTransactions}
           activeOpacity={0.6}
         >
-          <Text style={styles.seeAllText}>Lihat Semua</Text>
+          <Text style={[styles.seeAllText, { color: theme.primary }]}>
+            Lihat Semua
+          </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.listContainer}>
         {recentTransactions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="wallet-outline" size={44} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>Belum Ada Catatan</Text>
-            <Text style={styles.emptySubtitle}>
+          <View
+            style={[
+              styles.emptyState,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Ionicons name="wallet-outline" size={44} color={theme.textMuted} />
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+              Belum Ada Catatan
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Tekan tombol di atas untuk mencatat pengeluaran atau pemasukan pertama Anda.
             </Text>
           </View>
@@ -292,6 +325,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  themeToggleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
   headerLogo: {
     width: 44,
     height: 44,
@@ -311,25 +357,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
-  headerBtnGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   todayCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 2,
@@ -346,51 +374,64 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  todayCardContent: {
+  todayHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  todayTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     flex: 1,
-    gap: 12,
+    marginRight: 8,
   },
   todayIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: '#FEF2F2',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  todayInfo: {
+  todayTitleTextWrap: {
     flex: 1,
-  },
-  todayTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
   },
   todayCardTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
   },
-  todayDateTag: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  todayDateTagText: {
-    fontSize: 10,
-    fontWeight: '600',
+  todayDateSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#64748B',
+    marginTop: 1,
+  },
+  todayDetailPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 3,
+  },
+  todayDetailText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  todayBody: {
+    paddingLeft: 4,
   },
   todayExpenseAmount: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#EF4444',
     letterSpacing: -0.5,
-    marginVertical: 1,
+    marginBottom: 6,
   },
   todayExpenseZero: {
     color: '#64748B',
@@ -399,7 +440,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: 6,
   },
   todayTransCount: {
     fontSize: 11,
@@ -410,72 +451,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#10B981',
     fontWeight: '600',
-  },
-  todayChevronWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 10,
-    gap: 2,
-    marginLeft: 8,
-  },
-  todayDetailText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  excelBannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#DCFCE7',
-    gap: 12,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  excelBannerIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  excelBannerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  excelBannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  excelTag: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  excelTagText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#16A34A',
-  },
-  excelBannerDesc: {
-    fontSize: 12,
-    color: '#64748B',
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -533,45 +508,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#059669',
   },
-  shortcutRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginTop: 14,
-  },
-  shortcutCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 10,
-  },
-  shortcutIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shortcutTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  shortcutDesc: {
-    fontSize: 11,
-    color: '#64748B',
-  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 24,
+    marginTop: 18,
     marginBottom: 12,
   },
   sectionTitle: {

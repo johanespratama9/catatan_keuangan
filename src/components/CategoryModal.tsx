@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Category, TransactionType } from '../types';
 import { defaultPalette } from '../utils/colors';
 import { getCategoryTransactionCount } from '../database/categoryRepo';
+import { useTheme } from '../context/ThemeContext';
 
 interface CategoryModalProps {
   visible: boolean;
@@ -50,6 +51,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  const { theme, isDark } = useTheme();
   const [name, setName] = useState('');
   const [type, setType] = useState<TransactionType>(defaultType);
   const [selectedIcon, setSelectedIcon] = useState<string>('cart');
@@ -160,18 +162,21 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark" />
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.card }]}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.container}
+          style={[styles.container, { backgroundColor: theme.card }]}
         >
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color="#64748B" />
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
               {isEditing ? 'Edit Kategori' : 'Kategori Baru'}
             </Text>
             {isEditing && initialCategory?.is_default === 0 && onDelete ? (
@@ -183,12 +188,32 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             )}
           </View>
 
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={[styles.body, { backgroundColor: theme.card }]}
+            showsVerticalScrollIndicator={false}
+          >
             {/* System Category Note if Default */}
             {isEditing && initialCategory?.is_default === 1 && (
-              <View style={styles.systemNotice}>
-                <Ionicons name="information-circle" size={18} color="#2563EB" />
-                <Text style={styles.systemNoticeText}>
+              <View
+                style={[
+                  styles.systemNotice,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(59, 130, 246, 0.15)'
+                      : '#EFF6FF',
+                    borderColor: isDark
+                      ? 'rgba(59, 130, 246, 0.3)'
+                      : '#BFDBFE',
+                  },
+                ]}
+              >
+                <Ionicons name="information-circle" size={18} color={theme.primary} />
+                <Text
+                  style={[
+                    styles.systemNoticeText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   Kategori bawaan sistem. Anda dapat menyesuaikan nama, ikon, dan warna sesuai kebutuhan.
                 </Text>
               </View>
@@ -196,7 +221,12 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Type Selector */}
             <View style={styles.typeSection}>
-              <View style={styles.typeSelector}>
+              <View
+                style={[
+                  styles.typeSelector,
+                  { backgroundColor: theme.surfaceSecondary },
+                ]}
+              >
                 <TouchableOpacity
                   style={[
                     styles.typeBtn,
@@ -209,6 +239,12 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   <Text
                     style={[
                       styles.typeBtnText,
+                      {
+                        color:
+                          type === 'expense'
+                            ? '#FFFFFF'
+                            : theme.textSecondary,
+                      },
                       type === 'expense' && styles.typeBtnTextActive,
                     ]}
                   >
@@ -228,6 +264,12 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   <Text
                     style={[
                       styles.typeBtnText,
+                      {
+                        color:
+                          type === 'income'
+                            ? '#FFFFFF'
+                            : theme.textSecondary,
+                      },
                       type === 'income' && styles.typeBtnTextActive,
                     ]}
                   >
@@ -238,8 +280,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
               {isEditing && transactionCount > 0 && (
                 <View style={styles.typeLockedRow}>
-                  <Ionicons name="lock-closed" size={13} color="#94A3B8" />
-                  <Text style={styles.typeLockedText}>
+                  <Ionicons name="lock-closed" size={13} color={theme.textMuted} />
+                  <Text style={[styles.typeLockedText, { color: theme.textMuted }]}>
                     Tipe terkunci karena digunakan dalam {transactionCount} transaksi
                   </Text>
                 </View>
@@ -248,11 +290,18 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Name Input */}
             <View style={styles.section}>
-              <Text style={styles.label}>Nama Kategori</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Nama Kategori</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Contoh: Belanja Online, Asuransi, dsb."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.textMuted}
                 value={name}
                 onChangeText={setName}
                 autoFocus={!isEditing}
@@ -261,7 +310,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Icon Selector */}
             <View style={styles.section}>
-              <Text style={styles.label}>Pilih Ikon</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Pilih Ikon</Text>
               <View style={styles.iconGrid}>
                 {displayIcons.map((icon) => {
                   const isSelected = selectedIcon === icon;
@@ -270,6 +319,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                       key={icon}
                       style={[
                         styles.iconBox,
+                        {
+                          backgroundColor: theme.surfaceSecondary,
+                          borderColor: theme.border,
+                        },
                         isSelected && {
                           backgroundColor: selectedColor,
                           borderColor: selectedColor,
@@ -280,7 +333,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                       <Ionicons
                         name={icon as any}
                         size={22}
-                        color={isSelected ? '#FFFFFF' : '#475569'}
+                        color={isSelected ? '#FFFFFF' : theme.textSecondary}
                       />
                     </TouchableOpacity>
                   );
@@ -290,7 +343,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Color Selector */}
             <View style={styles.section}>
-              <Text style={styles.label}>Pilih Warna</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Pilih Warna</Text>
               <View style={styles.colorGrid}>
                 {displayColors.map((color) => {
                   const isSelected = selectedColor === color;
@@ -314,8 +367,16 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             </View>
 
             {/* Preview */}
-            <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>Pratinjau Kategori:</Text>
+            <View
+              style={[
+                styles.previewCard,
+                {
+                  backgroundColor: theme.surfaceSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <Text style={[styles.previewTitle, { color: theme.textSecondary }]}>Pratinjau Kategori:</Text>
               <View style={styles.previewBadge}>
                 <View
                   style={[
@@ -329,7 +390,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                     color={selectedColor}
                   />
                 </View>
-                <Text style={styles.previewName}>{name.trim() || 'Nama Kategori'}</Text>
+                <Text style={[styles.previewName, { color: theme.textPrimary }]}>{name.trim() || 'Nama Kategori'}</Text>
               </View>
             </View>
 
@@ -337,9 +398,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           </ScrollView>
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
             <TouchableOpacity
-              style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: theme.primary },
+                isSubmitting && styles.saveBtnDisabled,
+              ]}
               onPress={handleSave}
               disabled={isSubmitting}
             >

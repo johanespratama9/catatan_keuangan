@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Category, TransactionType } from "../types";
+import { useTheme } from "../context/ThemeContext";
 
 interface CategoriesScreenProps {
   categories: Category[];
@@ -18,6 +19,7 @@ interface CategoriesScreenProps {
   onOpenCreateCategory: (type?: TransactionType) => void;
   onEditCategory: (category: Category) => void;
   onDeleteCategory: (id: number) => Promise<boolean>;
+  onOpenThemeModal?: () => void;
 }
 
 export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
@@ -27,7 +29,9 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
   onOpenCreateCategory,
   onEditCategory,
   onDeleteCategory,
+  onOpenThemeModal,
 }) => {
+  const { theme, isDark, themeMode } = useTheme();
   const [activeType, setActiveType] = useState<TransactionType>("expense");
 
   const filtered = categories.filter((c) => c.type === activeType);
@@ -59,7 +63,7 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -68,24 +72,60 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={styles.headerTitle}>Kelola Kategori</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+            Kelola Kategori
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             Ketuk kategori untuk mengedit
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => onOpenCreateCategory(activeType)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-          <Text style={styles.addBtnText}>Baru</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {onOpenThemeModal && (
+            <TouchableOpacity
+              style={[
+                styles.themeToggleBtn,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={onOpenThemeModal}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={
+                  themeMode === "system"
+                    ? "phone-portrait-outline"
+                    : themeMode === "dark"
+                    ? "moon"
+                    : "sunny"
+                }
+                size={18}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: theme.primary }]}
+            onPress={() => onOpenCreateCategory(activeType)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.addBtnText}>Baru</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Type Switcher */}
-      <View style={styles.typeSelector}>
+      <View
+        style={[
+          styles.typeSelector,
+          { backgroundColor: theme.surfaceSecondary },
+        ]}
+      >
         <TouchableOpacity
           style={[
             styles.typeTab,
@@ -96,7 +136,12 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
           <Text
             style={[
               styles.typeTabText,
-              activeType === "expense" && styles.typeTabTextActive,
+              {
+                color:
+                  activeType === "expense"
+                    ? "#FFFFFF"
+                    : theme.textSecondary,
+              },
             ]}
           >
             Kategori Pengeluaran
@@ -113,7 +158,12 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
           <Text
             style={[
               styles.typeTabText,
-              activeType === "income" && styles.typeTabTextActive,
+              {
+                color:
+                  activeType === "income"
+                    ? "#FFFFFF"
+                    : theme.textSecondary,
+              },
             ]}
           >
             Kategori Pemasukan
@@ -126,7 +176,13 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
         {filtered.map((cat) => (
           <TouchableOpacity
             key={cat.id}
-            style={styles.card}
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
             activeOpacity={0.7}
             onPress={() => onEditCategory(cat)}
           >
@@ -141,15 +197,45 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
             </View>
 
             <View style={styles.catInfo}>
-              <Text style={styles.catName}>{cat.name}</Text>
+              <Text style={[styles.catName, { color: theme.textPrimary }]}>
+                {cat.name}
+              </Text>
               <View style={styles.badgeRow}>
                 {cat.is_default === 1 ? (
-                  <View style={styles.systemBadge}>
-                    <Text style={styles.systemBadgeText}>Bawaan</Text>
+                  <View
+                    style={[
+                      styles.systemBadge,
+                      { backgroundColor: theme.surfaceSecondary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.systemBadgeText,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      Bawaan
+                    </Text>
                   </View>
                 ) : (
-                  <View style={styles.customBadge}>
-                    <Text style={styles.customBadgeText}>Kustom</Text>
+                  <View
+                    style={[
+                      styles.customBadge,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(59, 130, 246, 0.2)"
+                          : "#EFF6FF",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.customBadgeText,
+                        { color: theme.primary },
+                      ]}
+                    >
+                      Kustom
+                    </Text>
                   </View>
                 )}
               </View>
@@ -157,7 +243,10 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
 
             {cat.is_default === 0 && (
               <TouchableOpacity
-                style={styles.deleteBtn}
+                style={[
+                  styles.deleteBtn,
+                  isDark && { backgroundColor: "rgba(239, 68, 68, 0.2)" },
+                ]}
                 onPress={() => handleDelete(cat)}
                 activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -169,10 +258,22 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
         ))}
 
         {filtered.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="folder-open-outline" size={48} color="#94A3B8" />
-            <Text style={styles.emptyTitle}>Belum Ada Kategori</Text>
-            <Text style={styles.emptySubtitle}>
+          <View
+            style={[
+              styles.emptyContainer,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Ionicons name="folder-open-outline" size={48} color={theme.textMuted} />
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+              Belum Ada Kategori
+            </Text>
+            <Text
+              style={[styles.emptySubtitle, { color: theme.textSecondary }]}
+            >
               Ketuk tombol "+ Baru" untuk menambahkan kategori{" "}
               {activeType === "expense" ? "pengeluaran" : "pemasukan"}.
             </Text>
@@ -217,6 +318,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     gap: 4,
+  },
+  themeToggleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   addBtnText: {
     color: "#FFFFFF",

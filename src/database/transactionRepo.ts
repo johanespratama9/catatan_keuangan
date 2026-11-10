@@ -1,4 +1,5 @@
 import { getDatabase } from './database';
+import { setTransactionLabels } from './labelRepo';
 import {
   TransactionType,
   TransactionWithCategory,
@@ -6,6 +7,23 @@ import {
   CategoryStat,
   FilterOptions,
 } from '../types';
+
+interface TransactionRow extends TransactionWithCategory {
+  label_names?: string | null;
+}
+
+const mapRowToTransaction = (row: TransactionRow): TransactionWithCategory => {
+  const { label_names, ...rest } = row;
+  return {
+    ...rest,
+    labels: label_names
+      ? label_names
+          .split('|||')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+      : [],
+  };
+};
 
 export const getTransactions = async (
   filters?: FilterOptions
@@ -22,9 +40,12 @@ export const getTransactions = async (
       t.created_at,
       c.name as category_name,
       c.icon as category_icon,
-      c.color as category_color
+      c.color as category_color,
+      GROUP_CONCAT(l.name, '|||') as label_names
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
+    LEFT JOIN transaction_labels tl ON t.id = tl.transaction_id
+    LEFT JOIN labels l ON tl.label_id = l.id
     WHERE 1=1
   `;
   const params: (string | number)[] = [];
@@ -49,15 +70,35 @@ export const getTransactions = async (
     params.push(filters.endDate);
   }
 
-  if (filters?.searchQuery && filters.searchQuery.trim().length > 0) {
-    query += ' AND (t.note LIKE ? OR c.name LIKE ?)';
-    const searchPattern = `%${filters.searchQuery.trim()}%`;
-    params.push(searchPattern, searchPattern);
+  if (filters?.label && filters.label.trim().length > 0) {
+    query += ` AND t.id IN (
+      SELECT tl_sub.transaction_id 
+      FROM transaction_labels tl_sub 
+      JOIN labels l_sub ON tl_sub.label_id = l_sub.id 
+      WHERE LOWER(l_sub.name) = LOWER(?)
+    )`;
+    params.push(filters.label.trim());
   }
 
-  query += ' ORDER BY t.date DESC, t.id DESC;';
+  if (filters?.searchQuery && filters.searchQuery.trim().length > 0) {
+    query += ` AND (
+      t.note LIKE ? 
+      OR c.name LIKE ? 
+      OR t.id IN (
+        SELECT tl_search.transaction_id 
+        FROM transaction_labels tl_search 
+        JOIN labels l_search ON tl_search.label_id = l_search.id 
+        WHERE l_search.name LIKE ?
+      )
+    )`;
+    const searchPattern = `%${filters.searchQuery.trim()}%`;
+    params.push(searchPattern, searchPattern, searchPattern);
+  }
 
-  return await db.getAllAsync<TransactionWithCategory>(query, params);
+  query += ' GROUP BY t.id ORDER BY t.date DESC, t.id DESC;';
+
+  const rows = await db.getAllAsync<TransactionRow>(query, params);
+  return rows.map(mapRowToTransaction);
 };
 
 export const getRecentTransactions = async (
@@ -75,13 +116,18 @@ export const getRecentTransactions = async (
       t.created_at,
       c.name as category_name,
       c.icon as category_icon,
-      c.color as category_color
+      c.color as category_color,
+      GROUP_CONCAT(l.name, '|||') as label_names
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
+    LEFT JOIN transaction_labels tl ON t.id = tl.transaction_id
+    LEFT JOIN labels l ON tl.label_id = l.id
+    GROUP BY t.id
     ORDER BY t.date DESC, t.id DESC
     LIMIT ?;
   `;
-  return await db.getAllAsync<TransactionWithCategory>(query, [limit]);
+  const rows = await db.getAllAsync<TransactionRow>(query, [limit]);
+  return rows.map(mapRowToTransaction);
 };
 
 export const getTransactionById = async (
@@ -99,12 +145,17 @@ export const getTransactionById = async (
       t.created_at,
       c.name as category_name,
       c.icon as category_icon,
-      c.color as category_color
+      c.color as category_color,
+      GROUP_CONCAT(l.name, '|||') as label_names
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
-    WHERE t.id = ?;
+    LEFT JOIN transaction_labels tl ON t.id = tl.transaction_id
+    LEFT JOIN labels l ON tl.label_id = l.id
+    WHERE t.id = ?
+    GROUP BY t.id;
   `;
-  return await db.getFirstAsync<TransactionWithCategory>(query, [id]);
+  const row = await db.getFirstAsync<TransactionRow>(query, [id]);
+  return row ? mapRowToTransaction(row) : null;
 };
 
 export const createTransaction = async (
@@ -112,14 +163,19 @@ export const createTransaction = async (
   amount: number,
   categoryId: number,
   date: string,
-  note?: string
+  note?: string,
+  labels?: string[]
 ): Promise<number> => {
   const db = getDatabase();
   const result = await db.runAsync(
     'INSERT INTO transactions (type, amount, category_id, date, note) VALUES (?, ?, ?, ?, ?);',
     [type, amount, categoryId, date, note?.trim() || null]
   );
-  return result.lastInsertRowId;
+  const newId = result.lastInsertRowId;
+  if (labels && labels.length > 0) {
+    await setTransactionLabels(newId, labels);
+  }
+  return newId;
 };
 
 export const updateTransaction = async (
@@ -128,17 +184,22 @@ export const updateTransaction = async (
   amount: number,
   categoryId: number,
   date: string,
-  note?: string
+  note?: string,
+  labels?: string[]
 ): Promise<void> => {
   const db = getDatabase();
   await db.runAsync(
     'UPDATE transactions SET type = ?, amount = ?, category_id = ?, date = ?, note = ? WHERE id = ?;',
     [type, amount, categoryId, date, note?.trim() || null, id]
   );
+  if (labels !== undefined) {
+    await setTransactionLabels(id, labels);
+  }
 };
 
 export const deleteTransaction = async (id: number): Promise<void> => {
   const db = getDatabase();
+  await db.runAsync('DELETE FROM transaction_labels WHERE transaction_id = ?;', [id]);
   await db.runAsync('DELETE FROM transactions WHERE id = ?;', [id]);
 };
 
@@ -152,10 +213,15 @@ export const getFinancialSummary = async (
   let queryExpense = 'SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = "expense"';
   const params: string[] = [];
 
-  if (startDate && endDate) {
-    queryIncome += ' AND date >= ? AND date <= ?';
-    queryExpense += ' AND date >= ? AND date <= ?';
-    params.push(startDate, endDate);
+  if (startDate) {
+    queryIncome += ' AND date >= ?';
+    queryExpense += ' AND date >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    queryIncome += ' AND date <= ?';
+    queryExpense += ' AND date <= ?';
+    params.push(endDate);
   }
 
   const [incomeRes, expenseRes] = await Promise.all([
@@ -195,9 +261,13 @@ export const getCategoryStats = async (
   `;
   const params: (string | number)[] = [type];
 
-  if (startDate && endDate) {
-    query += ' AND t.date >= ? AND t.date <= ?';
-    params.push(startDate, endDate);
+  if (startDate) {
+    query += ' AND t.date >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ' AND t.date <= ?';
+    params.push(endDate);
   }
 
   query += `

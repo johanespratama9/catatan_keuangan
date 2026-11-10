@@ -18,7 +18,7 @@ import {
   importFromExcel,
   downloadTemplateExcel,
 } from '../utils/excelService';
-import { colors } from '../utils/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface ExcelModalProps {
   visible: boolean;
@@ -35,6 +35,7 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
   onClose,
   onDataImported,
 }) => {
+  const { theme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -104,20 +105,30 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark" />
-        <View style={styles.container}>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.card }]}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <View style={[styles.container, { backgroundColor: theme.card }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color="#64748B" />
+            <Ionicons name="close" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Ekspor & Impor Excel</Text>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+            Ekspor & Impor Excel
+          </Text>
           <View style={{ width: 36 }} />
         </View>
 
         {/* Tab Switcher */}
-        <View style={styles.tabSelector}>
+        <View
+          style={[
+            styles.tabSelector,
+            { backgroundColor: theme.surfaceSecondary },
+          ]}
+        >
           <TouchableOpacity
             style={[
               styles.tabBtn,
@@ -128,11 +139,15 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
             <Ionicons
               name="cloud-upload-outline"
               size={18}
-              color={activeTab === 'export' ? '#FFFFFF' : '#64748B'}
+              color={activeTab === 'export' ? '#FFFFFF' : theme.textSecondary}
             />
             <Text
               style={[
                 styles.tabText,
+                {
+                  color:
+                    activeTab === 'export' ? '#FFFFFF' : theme.textSecondary,
+                },
                 activeTab === 'export' && styles.tabTextActive,
               ]}
             >
@@ -150,11 +165,15 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
             <Ionicons
               name="cloud-download-outline"
               size={18}
-              color={activeTab === 'import' ? '#FFFFFF' : '#64748B'}
+              color={activeTab === 'import' ? '#FFFFFF' : theme.textSecondary}
             />
             <Text
               style={[
                 styles.tabText,
+                {
+                  color:
+                    activeTab === 'import' ? '#FFFFFF' : theme.textSecondary,
+                },
                 activeTab === 'import' && styles.tabTextActive,
               ]}
             >
@@ -163,35 +182,75 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={[styles.body, { backgroundColor: theme.card }]}
+          showsVerticalScrollIndicator={false}
+        >
           {activeTab === 'export' ? (
             /* TAB EXPORT */
             <View style={styles.contentSection}>
               {/* Feature Banner */}
-              <View style={styles.bannerCard}>
-                <View style={styles.excelIconWrap}>
+              <View
+                style={[
+                  styles.bannerCard,
+                  {
+                    backgroundColor: theme.surfaceSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.excelIconWrap,
+                    isDark && { backgroundColor: 'rgba(22, 163, 74, 0.18)' },
+                  ]}
+                >
                   <Ionicons name="document-text" size={36} color="#16A34A" />
                 </View>
-                <Text style={styles.bannerTitle}>Ekspor Format Microsoft Excel (.xlsx)</Text>
-                <Text style={styles.bannerSubtitle}>
+                <Text style={[styles.bannerTitle, { color: theme.textPrimary }]}>
+                  Ekspor Format Microsoft Excel (.xlsx)
+                </Text>
+                <Text style={[styles.bannerSubtitle, { color: theme.textSecondary }]}>
                   Data catatan keuangan Anda akan diekspor dalam format spreadsheet (.xlsx) lengkap dengan multi-worksheet: Transaksi, Ringkasan, dan Kategori.
                 </Text>
               </View>
 
               {/* Data Summary Stats */}
-              <View style={styles.infoCard}>
-                <Text style={styles.infoCardTitle}>Data yang Siap Diekspor:</Text>
+              <View
+                style={[
+                  styles.infoCard,
+                  {
+                    backgroundColor: theme.surfaceSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.infoCardTitle, { color: theme.textPrimary }]}>
+                  Data yang Siap Diekspor:
+                </Text>
                 <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Total Baris Transaksi</Text>
-                  <Text style={styles.statVal}>{transactions.length} transaksi</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                    Total Baris Transaksi
+                  </Text>
+                  <Text style={[styles.statVal, { color: theme.textPrimary }]}>
+                    {transactions.length} transaksi
+                  </Text>
                 </View>
                 <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Jumlah Kategori</Text>
-                  <Text style={styles.statVal}>{categories.length} kategori</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                    Jumlah Kategori
+                  </Text>
+                  <Text style={[styles.statVal, { color: theme.textPrimary }]}>
+                    {categories.length} kategori
+                  </Text>
                 </View>
                 <View style={styles.statRow}>
-                  <Text style={styles.statLabel}>Format Output</Text>
-                  <Text style={styles.statVal}>.xlsx (Workbook Excel)</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                    Format Output
+                  </Text>
+                  <Text style={[styles.statVal, { color: theme.textPrimary }]}>
+                    .xlsx (Workbook Excel)
+                  </Text>
                 </View>
               </View>
 
@@ -218,56 +277,147 @@ export const ExcelModal: React.FC<ExcelModalProps> = ({
             /* TAB IMPORT */
             <View style={styles.contentSection}>
               {/* Feature Banner */}
-              <View style={styles.bannerCard}>
-                <View style={[styles.excelIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                  <Ionicons name="cloud-download" size={36} color="#2563EB" />
+              <View
+                style={[
+                  styles.bannerCard,
+                  {
+                    backgroundColor: theme.surfaceSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.excelIconWrap,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(59, 130, 246, 0.2)'
+                        : '#EFF6FF',
+                    },
+                  ]}
+                >
+                  <Ionicons name="cloud-download" size={36} color={theme.primary} />
                 </View>
-                <Text style={styles.bannerTitle}>Impor Data dari Excel</Text>
-                <Text style={styles.bannerSubtitle}>
+                <Text style={[styles.bannerTitle, { color: theme.textPrimary }]}>
+                  Impor Data dari Excel
+                </Text>
+                <Text style={[styles.bannerSubtitle, { color: theme.textSecondary }]}>
                   Tambahkan atau pulihkan catatan transaksi massal dari file .xlsx, .xls, atau .csv.
                 </Text>
               </View>
 
               {/* Template Download Card */}
-              <View style={styles.templateCard}>
+              <View
+                style={[
+                  styles.templateCard,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(245, 158, 11, 0.12)'
+                      : '#FFFBEB',
+                    borderColor: isDark
+                      ? 'rgba(245, 158, 11, 0.25)'
+                      : '#FEF3C7',
+                  },
+                ]}
+              >
                 <View style={styles.templateIconCol}>
                   <Ionicons name="bulb-outline" size={24} color="#D97706" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.templateTitle}>Belum punya file dengan format yang sesuai?</Text>
-                  <Text style={styles.templateSubtitle}>
+                  <Text
+                    style={[
+                      styles.templateTitle,
+                      { color: isDark ? '#FBBF24' : '#92400E' },
+                    ]}
+                  >
+                    Belum punya file dengan format yang sesuai?
+                  </Text>
+                  <Text
+                    style={[
+                      styles.templateSubtitle,
+                      { color: isDark ? '#FCD34D' : '#B45309' },
+                    ]}
+                  >
                     Unduh file template contoh kami untuk melihat susunan kolom yang didukung.
                   </Text>
                   <TouchableOpacity
-                    style={styles.downloadTemplateBtn}
+                    style={[
+                      styles.downloadTemplateBtn,
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: theme.border,
+                      },
+                    ]}
                     onPress={handleDownloadTemplate}
                     disabled={loading}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="download-outline" size={16} color="#2563EB" />
-                    <Text style={styles.downloadTemplateText}>Unduh Template Excel</Text>
+                    <Ionicons name="download-outline" size={16} color={theme.primary} />
+                    <Text
+                      style={[
+                        styles.downloadTemplateText,
+                        { color: theme.primary },
+                      ]}
+                    >
+                      Unduh Template Excel
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Columns Guide */}
-              <View style={styles.infoCard}>
-                <Text style={styles.infoCardTitle}>Kolom yang Didukung:</Text>
+              <View
+                style={[
+                  styles.infoCard,
+                  {
+                    backgroundColor: theme.surfaceSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.infoCardTitle, { color: theme.textPrimary }]}>
+                  Kolom yang Didukung:
+                </Text>
                 <View style={styles.columnTagRow}>
-                  <View style={styles.colTag}><Text style={styles.colTagText}>Tanggal (YYYY-MM-DD)</Text></View>
-                  <View style={styles.colTag}><Text style={styles.colTagText}>Tipe (Pengeluaran/Pemasukan)</Text></View>
-                  <View style={styles.colTag}><Text style={styles.colTagText}>Kategori</Text></View>
-                  <View style={styles.colTag}><Text style={styles.colTagText}>Nominal (Angka)</Text></View>
-                  <View style={styles.colTag}><Text style={styles.colTagText}>Catatan</Text></View>
+                  <View style={[styles.colTag, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.colTagText, { color: theme.textPrimary }]}>
+                      Tanggal (YYYY-MM-DD)
+                    </Text>
+                  </View>
+                  <View style={[styles.colTag, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.colTagText, { color: theme.textPrimary }]}>
+                      Tipe (Pengeluaran/Pemasukan)
+                    </Text>
+                  </View>
+                  <View style={[styles.colTag, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.colTagText, { color: theme.textPrimary }]}>
+                      Kategori
+                    </Text>
+                  </View>
+                  <View style={[styles.colTag, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.colTagText, { color: theme.textPrimary }]}>
+                      Nominal (Angka)
+                    </Text>
+                  </View>
+                  <View style={[styles.colTag, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.colTagText, { color: theme.textPrimary }]}>
+                      Catatan
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.subGuideNote}>
+                <Text style={[styles.subGuideNote, { color: theme.textMuted }]}>
                   * Kategori yang belum ada di aplikasi akan dibuatkan secara otomatis.
                 </Text>
               </View>
 
               {/* Import Action Button */}
               <TouchableOpacity
-                style={[styles.actionBtn, styles.importBtn, loading && styles.btnDisabled]}
+                style={[
+                  styles.actionBtn,
+                  styles.importBtn,
+                  { backgroundColor: theme.primary },
+                  loading && styles.btnDisabled,
+                ]}
                 onPress={handleImport}
                 disabled={loading}
                 activeOpacity={0.8}

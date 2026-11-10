@@ -6,8 +6,8 @@ import {
   Image,
   Animated,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../utils/colors';
 
@@ -52,7 +52,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <StatusBar style="light" />
 
       {/* Decorative ambient background glows */}
       <View style={styles.glowTop} />
