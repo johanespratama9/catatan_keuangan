@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
+  LayoutAnimation,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Category, TransactionType, TransactionWithCategory, Label } from '../types';
 import { getAllLabels } from '../database/labelRepo';
@@ -49,6 +49,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onDelete,
 }) => {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amountStr, setAmountStr] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -62,15 +63,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const [isNoteFocused, setIsNoteFocused] = useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const [noteLayoutY, setNoteLayoutY] = useState<number>(0);
+  const [labelLayoutY, setLabelLayoutY] = useState<number>(0);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       setKeyboardHeight(e.endCoordinates.height);
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       setKeyboardHeight(0);
       setIsNoteFocused(false);
     });
@@ -84,11 +93,24 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const handleNoteFocus = () => {
     setIsNoteFocused(true);
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      if (noteLayoutY > 0) {
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, noteLayoutY - 16),
+          animated: true,
+        });
+      }
+    }, 120);
+  };
+
+  const handleLabelFocus = () => {
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 280);
+      if (labelLayoutY > 0) {
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, labelLayoutY - 16),
+          animated: true,
+        });
+      }
+    }, 120);
   };
 
   const handleNoteBlur = () => {
@@ -254,13 +276,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     >
       <SafeAreaView
         style={[styles.safeArea, { backgroundColor: theme.card }]}
-        edges={['top', 'bottom', 'left', 'right']}
+        edges={['top', 'left', 'right']}
       >
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={[styles.container, { backgroundColor: theme.card }]}
-        >
+        <View style={[styles.container, { backgroundColor: theme.card }]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -284,17 +303,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingBottom: isNoteFocused
-                ? Math.max(keyboardHeight + 20, 200)
-                : keyboardHeight > 0
-                ? 100
-                : 36,
+              paddingBottom: keyboardHeight > 0 ? 120 : 24,
             },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          keyboardDismissMode="interactive"
         >
           {/* Expense / Income Toggle */}
           <View
@@ -465,9 +479,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 ]}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Ionicons name="calendar-outline" size={20} color={theme.primary} />
-                <Text style={[styles.dateValueText, { color: theme.textPrimary }]}>
-                  {formatDate(toISODateString(date))} ({toISODateString(date)})
+                <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+                <Text
+                  style={[styles.dateValueText, { color: theme.textPrimary }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {`${date.getDate()} ${[
+                    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+                    'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+                  ][date.getMonth()]} ${date.getFullYear()}`}
                 </Text>
               </TouchableOpacity>
 
@@ -518,7 +539,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </View>
 
           {/* Note Input */}
-          <View style={styles.inputSection}>
+          <View
+            style={styles.inputSection}
+            onLayout={(e) => setNoteLayoutY(e.nativeEvent.layout.y)}
+          >
             <View style={styles.labelRow}>
               <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Catatan (Opsional)</Text>
               {isNoteFocused && (
@@ -564,7 +588,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </View>
 
           {/* Label Section */}
-          <View style={styles.inputSection}>
+          <View
+            style={styles.inputSection}
+            onLayout={(e) => setLabelLayoutY(e.nativeEvent.layout.y)}
+          >
             <View style={styles.labelRow}>
               <View style={styles.labelTitleRow}>
                 <Ionicons name="pricetag-outline" size={16} color={theme.textSecondary} />
@@ -607,6 +634,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 value={customLabelInput}
                 onChangeText={setCustomLabelInput}
                 onSubmitEditing={handleAddCustomLabel}
+                onFocus={handleLabelFocus}
                 returnKeyType="done"
               />
               <TouchableOpacity
@@ -670,7 +698,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </ScrollView>
 
         {/* Footer Submit Button */}
-        <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.card,
+              borderTopColor: theme.border,
+              paddingBottom: keyboardHeight > 0 ? 12 : Math.max(insets.bottom, 16),
+              marginBottom: keyboardHeight > 0 ? keyboardHeight : 0,
+            },
+          ]}
+        >
           <TouchableOpacity
             style={[
               styles.submitBtn,
@@ -690,7 +728,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -856,19 +894,21 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 6,
+    minWidth: 0,
   },
   dateValueText: {
-    fontSize: 14,
+    flex: 1,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1E293B',
   },
   quickDateBtn: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     borderRadius: 12,
   },
   quickDateBtnActive: {
